@@ -1,0 +1,9 @@
+temperature,sensor=livingroom value=23.5
+temperature,sensor=livingroom value=23.8
+temperature,sensor=livingroom value=24.1
+temperature,sensor=bedroom value=21.8
+temperature,sensor=bedroom value=22.0
+temperature,sensor=bedroom value=22.2
+humidity,sensor=livingroom value=41.2
+humidity,sensor=livingroom value=42.0
+humidity,sensor=livingroom value=42.5

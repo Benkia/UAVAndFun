@@ -1,0 +1,47 @@
+{
+  "id": null,
+  "uid": "sample-temp",
+  "title": "Sample Temperature",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Temperature by location",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${INFLUXDB_BUCKET}\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"temperature\") |> filter(fn: (r) => r._field == \"value\") |> group(columns: [\"location\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}
+

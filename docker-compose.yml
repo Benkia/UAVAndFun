@@ -1,0 +1,46 @@
+services:
+  influxdb:
+    build:
+      context: ./influx
+    container_name: mav-influx
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
+      DOCKER_INFLUXDB_INIT_ORG: mav-org
+      DOCKER_INFLUXDB_INIT_BUCKET: sample-bucket
+      DOCKER_INFLUXDB_INIT_RETENTION: 72h
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: supersecrettoken
+    volumes:
+      - influx-data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: mav-grafana
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: supersecrettoken
+      INFLUXDB_ORG: mav-org
+      INFLUXDB_BUCKET: sample-bucket
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  influx-data:
+  grafana-data:
+
