@@ -37,3 +37,34 @@ The script focuses on accelerometer (IMU) and vibration (VIBE) messages, anchori
 - Data is persisted in docker volumes (`influx-data`, `grafana-data`). To reset everything, stop containers and run `docker volume rm mav-analytics_influx-data mav-analytics_grafana-data`.
 - Adjust credentials/tokens in `docker-compose.yml` if you need something different.
 
+## Receive Influx alerts via webhook
+Run a small FastAPI server that accepts InfluxDB notification webhooks and logs them to `logs/influx_alerts.log` (plus stdout):
+```bash
+# install deps (inside your venv)
+pip install -r requirements.txt
+
+# start the receiver from the repo root (file path run)
+python alert-api/influx_alert_api.py
+# or with uvicorn (module import)
+uvicorn influx_alert_api:app --app-dir alert-api --host 0.0.0.0 --port 9000
+```
+
+Configure your InfluxDB notification endpoint to point at `http://localhost:9000/alerts/influx`. A simple test payload:
+```bash
+curl -X POST http://localhost:9000/alerts/influx \
+  -H "Content-Type: application/json" \
+  -d '{"status":"firing","notificationRuleName":"example","checkName":"temp high","message":"Over threshold","sourceTimestamp":"2025-01-01T00:00:00Z"}'
+```
+
+Quick health check:
+```bash
+curl http://localhost:9000/healthz
+```
+
+Send a minimal test alert (single line curl):
+```bash
+curl -X POST http://localhost:9000/alerts/influx -H "Content-Type: application/json" -d '{"status":"firing","notificationRuleName":"example","checkName":"temp high","message":"Over threshold","sourceTimestamp":"2025-01-01T00:00:00Z"}'
+```
+
+Health probe: `GET http://localhost:9000/healthz`.
+

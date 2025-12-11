@@ -40,7 +40,25 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana-data:/var/lib/grafana
 
+  alert-api:
+    build:
+      context: .
+      dockerfile: alert-api/Dockerfile
+    container_name: mav-alert-api
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - alert-api-logs:/app/logs
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: supersecrettoken
+      INFLUX_ORG: mav-org
+    ports:
+      - "9000:9000"
+
 volumes:
   influx-data:
   grafana-data:
+  alert-api-logs:
 
