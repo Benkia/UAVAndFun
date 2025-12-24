@@ -4,8 +4,9 @@ services:
       context: ./influx
     container_name: mav-influx
     ports:
-      - "8086:8086"
+      - "8181:8181"
     environment:
+      INFLUXDB_NODE_ID: mav-node
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: admin
       DOCKER_INFLUXDB_INIT_PASSWORD: admin123
@@ -13,13 +14,25 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: sample-bucket
       DOCKER_INFLUXDB_INIT_RETENTION: 72h
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: supersecrettoken
+    command: ["influxdb3", "serve", "--node-id-from-env", "INFLUXDB_NODE_ID", "--disable-authz", "health,ping"]
     volumes:
-      - influx-data:/var/lib/influxdb2
+      - influx-data:/var/lib/influxdb3
     healthcheck:
-      test: ["CMD", "influx", "ping"]
+      test: ["CMD", "curl", "-f", "http://localhost:8181/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  influxdb3-ui:
+    image: influxdata/influxdb3-ui:latest
+    container_name: mav-influxdb-ui
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "8888:80"
+      - "8889:8888"
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:11.0.0
@@ -30,7 +43,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin123
-      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_URL: http://influxdb:8181
       INFLUXDB_TOKEN: supersecrettoken
       INFLUXDB_ORG: mav-org
       INFLUXDB_BUCKET: sample-bucket
@@ -51,7 +64,7 @@ services:
     volumes:
       - alert-api-logs:/app/logs
     environment:
-      INFLUX_URL: http://influxdb:8086
+      INFLUX_URL: http://influxdb:8181
       INFLUX_TOKEN: supersecrettoken
       INFLUX_ORG: mav-org
     ports:

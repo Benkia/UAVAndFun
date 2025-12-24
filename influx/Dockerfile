@@ -1,6 +1,7 @@
-FROM influxdb:2.7
+FROM influxdb:3.8-core
 
 # Copy init scripts and sample data that run on first startup
 COPY docker-entrypoint-initdb.d /docker-entrypoint-initdb.d
 
-RUN chmod +x /docker-entrypoint-initdb.d/*.sh
+# Make init scripts executable
+RUN find /docker-entrypoint-initdb.d -name "*.sh" -type f -exec chmod +x {} \; || true
