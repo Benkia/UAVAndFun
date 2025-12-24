@@ -23,3 +23,6 @@ wxPython==4.2.4
 zipp==3.23.0
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
+influxdb-client>=1.40.0
+influxdb3-python>=0.4.0
+deep-translator>=1.11.4
