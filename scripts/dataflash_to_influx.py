@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 """
 Parse ArduPilot DataFlash logs and emit InfluxDB line protocol focused on
-accelerometer (IMU) and vibration (VIBE) records.
+accelerometer (IMU), vibration (VIBE), magnetometer (MAG), battery (BAT),
+and motor output (RCOU) records.
 
 Usage:
   python scripts/dataflash_to_influx.py --input input-files/log.bin --output out.lp
   python scripts/dataflash_to_influx.py --input input-files/log.bin --output - \
     | docker exec -i mav-influx influx write \
-        --org mav-org --bucket sample-bucket --precision ns --file -
+        --db sample-bucket --file -
 
 Requirements: pymavlink (already present in the repo's venv).
 """
@@ -21,7 +22,7 @@ from typing import Dict, Iterable, Optional
 from pymavlink import DFReader
 
 
-def _format_line(measurement: str, tags: Dict[str, object], fields: Dict[str, object], ts_ns: int) -> Optional[str]:
+def _format_line(measurement: str, tags: Dict[str, object], fields: Dict[str, object], ts_us: int) -> Optional[str]:
     """Return a line protocol string or None if no fields."""
     clean_fields = {k: v for k, v in fields.items() if v is not None}
     if not clean_fields:
@@ -39,21 +40,19 @@ def _format_line(measurement: str, tags: Dict[str, object], fields: Dict[str, ob
         else:
             field_parts.append(f'{k}="{v}"')
     field_str = ",".join(field_parts)
-    return f"{measurement}{',' + tag_str if tag_str else ''} {field_str} {ts_ns}"
+    return f"{measurement}{',' + tag_str if tag_str else ''} {field_str} {ts_us}"
 
 
 def generate_lines(path: str, precision: str = "ns") -> Iterable[str]:
-    """Yield line protocol strings for IMU and VIBE records.
+    """Yield line protocol strings for IMU, VIBE, MAG, BAT, and RCOU records.
 
     DataFlash TimeUS is microseconds since boot. To keep writes in a sane
     time range (and within retention), we anchor the first TimeUS to the
     current wall-clock and preserve relative offsets.
     """
     reader = DFReader.DFReader_binary(path)
-
-    start_us = None
-    base_ns = None
-
+    timebase = reader.clock.timebase * 1000000
+    
     while True:
         msg = reader.recv_msg()
         if msg is None:
@@ -63,22 +62,8 @@ def generate_lines(path: str, precision: str = "ns") -> Iterable[str]:
 
         if "TimeUS" not in data:
             continue
-        time_us = data["TimeUS"]
-        if start_us is None:
-            start_us = time_us
-            base_ns = time.time_ns() - int(start_us * 1000)
-        ts_ns = base_ns + int(time_us * 1000)
+        time_us = int(timebase + data["TimeUS"])
 
-        # Adjust precision if desired (default ns). Influx write must use the
-        # same precision flag.
-        if precision == "ns":
-            ts_out = ts_ns
-        elif precision == "ms":
-            ts_out = ts_ns // 1_000_000
-        elif precision == "s":
-            ts_out = ts_ns // 1_000_000_000
-        else:
-            raise ValueError(f"Unsupported precision: {precision}")
 
         if mtype == "IMU":
             tags = {"imu": data.get("I")}
@@ -91,7 +76,7 @@ def generate_lines(path: str, precision: str = "ns") -> Iterable[str]:
                 "GyrZ": data.get("GyrZ"),
                 "TempC": data.get("T"),
             }
-            line = _format_line("imu", tags, fields, ts_out)
+            line = _format_line("imu", tags, fields, time_us)
             if line:
                 yield line
 
@@ -103,26 +88,64 @@ def generate_lines(path: str, precision: str = "ns") -> Iterable[str]:
                 "VibeZ": data.get("VibeZ"),
                 "Clip": data.get("Clip"),
             }
-            line = _format_line("vibe", tags, fields, ts_out)
+            line = _format_line("vibe", tags, fields, time_us)
+            if line:
+                yield line
+
+        elif mtype == "MAG":
+            tags = {"instance": data.get("I")}
+            fields = {
+                "MagX": data.get("MagX"),
+                "MagY": data.get("MagY"),
+                "MagZ": data.get("MagZ"),
+            }
+            line = _format_line("mag", tags, fields, time_us)
+            if line:
+                yield line
+
+        elif mtype == "BAT":
+            tags = {"instance": data.get("I")}
+            fields = {
+                "Volt": data.get("Volt"),
+                "Curr": data.get("Curr"),
+                "Res": data.get("Res"),
+            }
+            line = _format_line("bat", tags, fields, time_us)
+            if line:
+                yield line
+
+        elif mtype == "RCOU":
+            tags = {}
+            fields = {
+                "C1": data.get("C1"),
+                "C2": data.get("C2"),
+                "C3": data.get("C3"),
+                "C4": data.get("C4"),
+                "C5": data.get("C5"),
+                "C6": data.get("C6"),
+                "C7": data.get("C7"),
+                "C8": data.get("C8"),
+                "C9": data.get("C9"),
+                "C10": data.get("C10"),
+                "C11": data.get("C11"),
+                "C12": data.get("C12"),
+                "C13": data.get("C13"),
+                "C14": data.get("C14"),
+            }
+            line = _format_line("rcou", tags, fields, time_us)
             if line:
                 yield line
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Convert DataFlash log to InfluxDB line protocol (IMU + VIBE).")
+    parser = argparse.ArgumentParser(description="Convert DataFlash log to InfluxDB line protocol (IMU, VIBE, MAG, BAT, RCOU).")
     parser.add_argument("--input", "-i", required=True, help="Path to DataFlash .bin or .log")
     parser.add_argument("--output", "-o", default="-", help="Output file path or '-' for stdout")
-    parser.add_argument(
-        "--precision",
-        choices=["ns", "ms", "s"],
-        default="ms",
-        help="Timestamp precision for output; must match influx write --precision.",
-    )
     args = parser.parse_args()
 
     out_fh = sys.stdout if args.output == "-" else open(args.output, "w", encoding="utf-8")
     try:
-        for line in generate_lines(args.input, precision=args.precision):
+        for line in generate_lines(args.input):
             out_fh.write(line + "\n")
     finally:
         if out_fh is not sys.stdout:
