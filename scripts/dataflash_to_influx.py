@@ -156,76 +156,13 @@ def generate_lines(path: str) -> Iterable[str]:
             continue
         time_us = int(timebase + data["TimeUS"])
 
-        if mtype == "IMU":
-            tags = {"imu": data.get("I")}
-            fields = {
-                "AccX": data.get("AccX"),
-                "AccY": data.get("AccY"),
-                "AccZ": data.get("AccZ"),
-                "GyrX": data.get("GyrX"),
-                "GyrY": data.get("GyrY"),
-                "GyrZ": data.get("GyrZ"),
-                "TempC": data.get("T"),
-            }
-            line = _format_line("imu", tags, fields, time_us)
-            if line:
-                yield line
-
-        elif mtype == "VIBE":
-            tags = {"imu": data.get("IMU")}
-            fields = {
-                "VibeX": data.get("VibeX"),
-                "VibeY": data.get("VibeY"),
-                "VibeZ": data.get("VibeZ"),
-                "Clip": data.get("Clip"),
-            }
-            line = _format_line("vibe", tags, fields, time_us)
-            if line:
-                yield line
-
-        elif mtype == "MAG":
-            tags = {"instance": data.get("I")}
-            fields = {
-                "MagX": data.get("MagX"),
-                "MagY": data.get("MagY"),
-                "MagZ": data.get("MagZ"),
-            }
-            line = _format_line("mag", tags, fields, time_us)
-            if line:
-                yield line
-
-        elif mtype == "BAT":
-            tags = {"instance": data.get("I")}
-            fields = {
-                "Volt": data.get("Volt"),
-                "Curr": data.get("Curr"),
-                "Res": data.get("Res"),
-            }
-            line = _format_line("bat", tags, fields, time_us)
-            if line:
-                yield line
-
-        elif mtype == "RCOU":
-            tags = {}
-            fields = {
-                "C1": data.get("C1"),
-                "C2": data.get("C2"),
-                "C3": data.get("C3"),
-                "C4": data.get("C4"),
-                "C5": data.get("C5"),
-                "C6": data.get("C6"),
-                "C7": data.get("C7"),
-                "C8": data.get("C8"),
-                "C9": data.get("C9"),
-                "C10": data.get("C10"),
-                "C11": data.get("C11"),
-                "C12": data.get("C12"),
-                "C13": data.get("C13"),
-                "C14": data.get("C14"),
-            }
-            line = _format_line("rcou", tags, fields, time_us)
-            if line:
-                yield line
+        tags = {}
+        if data.get("imu") or data.get("instance") is not None:
+            tags["imu"] = data.get("imu")
+            tags["instance"] = data.get("instance")
+        line = _format_line(mtype, tags, data, time_us)
+        if line:
+            yield line
 
 
 def generate_points(path: str, bucket_name: str) -> Iterable[Point]:
@@ -249,76 +186,13 @@ def generate_points(path: str, bucket_name: str) -> Iterable[Point]:
             continue
         time_us = int(timebase + data["TimeUS"])
 
-        if mtype == "IMU":
-            tags = {"imu": data.get("I")}
-            fields = {
-                "AccX": data.get("AccX"),
-                "AccY": data.get("AccY"),
-                "AccZ": data.get("AccZ"),
-                "GyrX": data.get("GyrX"),
-                "GyrY": data.get("GyrY"),
-                "GyrZ": data.get("GyrZ"),
-                "TempC": data.get("T"),
-            }
-            point = _create_point("imu", tags, fields, time_us, bucket_name)
-            if point:
-                yield point
-
-        elif mtype == "VIBE":
-            tags = {"imu": data.get("IMU")}
-            fields = {
-                "VibeX": data.get("VibeX"),
-                "VibeY": data.get("VibeY"),
-                "VibeZ": data.get("VibeZ"),
-                "Clip": data.get("Clip"),
-            }
-            point = _create_point("vibe", tags, fields, time_us, bucket_name)
-            if point:
-                yield point
-
-        elif mtype == "MAG":
-            tags = {"instance": data.get("I")}
-            fields = {
-                "MagX": data.get("MagX"),
-                "MagY": data.get("MagY"),
-                "MagZ": data.get("MagZ"),
-            }
-            point = _create_point("mag", tags, fields, time_us, bucket_name)
-            if point:
-                yield point
-
-        elif mtype == "BAT":
-            tags = {"instance": data.get("I")}
-            fields = {
-                "Volt": data.get("Volt"),
-                "Curr": data.get("Curr"),
-                "Res": data.get("Res"),
-            }
-            point = _create_point("bat", tags, fields, time_us, bucket_name)
-            if point:
-                yield point
-
-        elif mtype == "RCOU":
-            tags = {}
-            fields = {
-                "C1": data.get("C1"),
-                "C2": data.get("C2"),
-                "C3": data.get("C3"),
-                "C4": data.get("C4"),
-                "C5": data.get("C5"),
-                "C6": data.get("C6"),
-                "C7": data.get("C7"),
-                "C8": data.get("C8"),
-                "C9": data.get("C9"),
-                "C10": data.get("C10"),
-                "C11": data.get("C11"),
-                "C12": data.get("C12"),
-                "C13": data.get("C13"),
-                "C14": data.get("C14"),
-            }
-            point = _create_point("rcou", tags, fields, time_us, bucket_name)
-            if point:
-                yield point
+        tags = {}
+        if data.get("imu") or data.get("instance") is not None:
+            tags["imu"] = data.get("imu")
+            tags["instance"] = data.get("instance")
+        line = _create_point(mtype, tags, data, time_us, bucket_name)
+        if line:
+            yield line
 
 
 def find_bin_files(directory: str) -> list[Path]:
