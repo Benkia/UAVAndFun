@@ -1,6 +1,6 @@
 # InfluxDB + Grafana stack
 
-This repo includes a minimal InfluxDB 2 + Grafana setup with sample line protocol data pre-loaded.
+This repo includes a minimal InfluxDB 3.7 + Grafana setup with sample line protocol data pre-loaded.
 
 ## Run the stack
 
